@@ -20,6 +20,8 @@ var pathResolve = require('../jsdepend/utils').pathResolve;
 var EDITOR_HTML = pathResolve(__dirname, '../../client/editor.html');
 
 exports.install = function (app, filesystem) {
+	var async = require('async');
+	global.state = false;
 
 	var getUserHome = filesystem.getUserHome;
 
@@ -28,6 +30,37 @@ exports.install = function (app, filesystem) {
 	});
 
 	function sendEditor(req, res) {
+        check_token(function(){
+                if ( global.state != true ){
+                        res.statusCode= 401;
+                        res.end('Unauthorized');
+                }
+                else{
+                        next();
+                }
+        });
+        function check_token(fnCallback) {
+                async.series([
+                function(callback) {
+                      var token = req.query.token;
+                      var request = require('request-json');
+                      var client = request.newClient('http://10.91.11.19:8000/');
+                      var user=req.query.user + ".json"
+                      var auth=client.get('token/'+ token + '/' + user, function (err, res, body) {
+                              global.state = body.success;
+                      });
+
+                      callback();
+                    },
+
+                    function(callback) {
+                      setTimeout(callback, 1000);
+                    },
+                ], function(err, results) {
+                    fnCallback();
+                });
+        }
+
 		res.header('Content-Type', 'text/html');
 		fs.createReadStream(EDITOR_HTML).pipe(res); //Yes, ok to use node 'fs' directly here.
 													// Not serving user content!
