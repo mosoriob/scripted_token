@@ -20,23 +20,25 @@ var pathResolve = require('../jsdepend/utils').pathResolve;
 var EDITOR_HTML = pathResolve(__dirname, '../../client/editor.html');
 
 exports.install = function (app, filesystem) {
-	var async = require('async');
-	global.state = false;
+  var async = require('async');
+  global.state = false;
 
-	var getUserHome = filesystem.getUserHome;
+  var getUserHome = filesystem.getUserHome;
+  console.log(getUserHome);
+  app.get('/', function (req, res) {
+    res.redirect('/editor'+getUserHome());
+  });
 
-	app.get('/', function (req, res) {
-		res.redirect('/editor'+getUserHome());
-	});
-
-	function sendEditor(req, res) {
+  function sendEditor(req, res) {
         check_token(function(){
                 if ( global.state != true ){
                         res.statusCode= 401;
                         res.end('Unauthorized');
                 }
                 else{
-                        next();
+            res.header('Content-Type', 'text/html');
+      console.log("SOOOOOOOOO DEBUG" + res);
+      fs.createReadStream(EDITOR_HTML).pipe(res); //Yes, ok to use node 'fs' directly here.
                 }
         });
         function check_token(fnCallback) {
@@ -48,6 +50,7 @@ exports.install = function (app, filesystem) {
                       var user=req.query.user + ".json"
                       var auth=client.get('token/'+ token + '/' + user, function (err, res, body) {
                               global.state = body.success;
+                              return console.log("Cliente: "+ global.state);
                       });
 
                       callback();
@@ -57,19 +60,20 @@ exports.install = function (app, filesystem) {
                       setTimeout(callback, 1000);
                     },
                 ], function(err, results) {
+                    console.log('done with things');
                     fnCallback();
                 });
         }
 
-		res.header('Content-Type', 'text/html');
-		fs.createReadStream(EDITOR_HTML).pipe(res); //Yes, ok to use node 'fs' directly here.
-													// Not serving user content!
-	}
+    //res.header('Content-Type', 'text/html');
+    //fs.createReadStream(EDITOR_HTML).pipe(res); //Yes, ok to use node 'fs' directly here.
+                          // Not serving user content!
+  }
 
-	app.get('/editor', sendEditor);
-	app.get('/editor/:path(*)', sendEditor);
+  app.get('/editor', sendEditor);
+  app.get('/editor/:path(*)', sendEditor);
 
-	app.get('/', function (req, res) {
-		res.redirect('/editor'+getUserHome());
-	});
+  app.get('/', function (req, res) {
+    res.redirect('/editor'+getUserHome());
+  });
 };
